@@ -13,7 +13,7 @@ export class UserService {
   ) {}
 
   async register(dto: CreateUserDto) {
-    const user = this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       username: dto.username,
     })
 
@@ -22,6 +22,10 @@ export class UserService {
     }
 
     const entity = this.userRepository.create(dto)
+    entity.status = 1
+    const currentTime = new Date().getTime().toString()
+    entity.createTime = currentTime
+    entity.updateTime = currentTime
     await this.userRepository.save(entity)
   }
 
@@ -32,7 +36,9 @@ export class UserService {
     })
 
     if (!user) {
-      throw new BadRequestException('Wrong username or password')
+      throw new BadRequestException(
+        'Wrong username or password or user not existed',
+      )
     }
 
     return user.id

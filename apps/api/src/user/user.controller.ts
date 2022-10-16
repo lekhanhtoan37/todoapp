@@ -14,13 +14,13 @@ import {
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
+  @Post('/register')
   async register(@Body() dto: CreateUserDto) {
     await this.userService.register(dto)
     return { message: 'OK', status_code: 200, data: {} }
   }
 
-  @Post()
+  @Post('/login')
   async login(@Body() dto: CreateUserDto) {
     const id = await this.userService.login(dto)
     return { message: 'OK', status_code: 200, data: { user_id: id } }

@@ -1,11 +1,16 @@
+import { TodoStatus } from './todo.enum'
 import { CancelTodoDto } from './dto/cancel-todo.dto'
 import { GetListTodoDto } from './dto/get-list-todo.dto'
 import { Task } from '@app/mysql/entities/task.entity'
-import { Injectable, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'
 import { Todo } from './interfaces/todo.interface'
 import { CreateTodoDto } from './dto/create-todo.dto'
 import { InjectRepository } from '@nestjs/typeorm'
-import { FindOperator, MoreThan, Not, Repository } from 'typeorm'
+import { FindOperator, LessThan, MoreThan, Not, Repository } from 'typeorm'
 import { classToPlain, instanceToPlain } from 'class-transformer'
 
 @Injectable()
@@ -15,44 +20,50 @@ export class TodoService {
     private readonly taskRepository: Repository<Task>,
   ) {}
 
-  findOne(id: string) {
-    console.log('id dans service :', id)
-    // return this.todos.find(todo => todo.id === Number(id))
-  }
-
-  async getListTask(dto: GetListTodoDto) {
-    const where = !dto.id
+  async getListTask(dto: GetListTodoDto, userId: string) {
+    const where = dto.id
       ? {
           id: MoreThan(dto.id),
-          status: 1,
+          userId: +userId,
+          status: dto.status,
         }
       : {
-          status: 1,
+          userId: +userId,
+          status: dto.status,
         }
     const listTask = await this.taskRepository.find({
       where: where,
-      take: 10,
+      take: dto.take ? dto.take : 10,
     })
     return instanceToPlain(listTask)
   }
 
-  async create(todo: CreateTodoDto) {
+  async create(todo: CreateTodoDto, userId: string) {
     const entity = this.taskRepository.create(todo)
+    entity.userId = +userId
+    entity.status = TodoStatus.Pending
     const currentTime = new Date().getTime().toString()
     entity.createTime = currentTime
     entity.updateTime = currentTime
     await this.taskRepository.save(entity)
+    return await this.taskRepository.findOne(entity)
   }
 
-  async cancel(todo: CancelTodoDto) {
-    await this.taskRepository.update(
+  async cancel(todo: CancelTodoDto, userId: string) {
+    const res = await this.taskRepository.update(
       {
         ...todo,
-        status: 1,
+        userId: +userId,
+        triggerTime: LessThan(new Date().getTime().toString()),
+        status: TodoStatus.Pending,
       },
       {
-        status: 3,
+        status: TodoStatus.Cancel,
       },
     )
+
+    if (res.affected == 0) {
+      throw new BadRequestException('Task is not Pending or already Done')
+    }
   }
 }

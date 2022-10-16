@@ -10,6 +10,11 @@ export class Task {
   id: number
 
   @ApiProperty()
+  @Column('int', { name: 'user_id', nullable: false })
+  @Expose({ name: 'user_id' })
+  userId: number
+
+  @ApiProperty()
   @Column('varchar', { name: 'title', nullable: false })
   @Expose()
   title: string
